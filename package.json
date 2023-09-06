@@ -65,7 +65,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/casdoor/casdoor-js-sdk.git"
+    "url": "https://github.com/leo220yuyaodog/casdoor-js-sdk.git"
   },
   "author": {
     "name": "Zxilly",
@@ -74,5 +74,5 @@
   "bugs": {
     "url": "https://github.com/casdoor/casdoor-js-sdk/issues"
   },
-  "homepage": "https://github.com/casdoor/casdoor-js-sdk"
+  "homepage": "https://github.com/leo220yuyaodog/casdoor-js-sdk"
 }
