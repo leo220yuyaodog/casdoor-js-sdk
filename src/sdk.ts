@@ -57,25 +57,10 @@ class Sdk {
         }
     }
 
-    getOrSaveState(): string {
-        const state = sessionStorage.getItem("casdoor-state");
-        if (state !== null) {
-            return state;
-        } else {
-            const state = Math.random().toString(36).slice(2);
-            sessionStorage.setItem("casdoor-state", state);
-            return state;
-        }
-    }
-
-    clearState() {
-        sessionStorage.removeItem("casdoor-state");
-    }
-
     public getSigninUrl(): string {
         const redirectUri = this.config.redirectPath && this.config.redirectPath.includes('://') ? this.config.redirectPath : `${window.location.origin}${this.config.redirectPath}`;
         const scope = "read";
-        const state = this.getOrSaveState();
+        const state = getOrSaveState();
         return `${this.config.serverUrl.trim()}/login/oauth/authorize?client_id=${this.config.clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}`;
     }
 
@@ -106,8 +91,8 @@ class Sdk {
             code = params.get("code")!;
             state = params.get("state")!;
         }
-        const expectedState = this.getOrSaveState();
-        this.clearState();
+        const expectedState = getOrSaveState();
+        clearState();
         if (state !== expectedState) {
             return new Promise((resolve, reject) => {
                 setTimeout(() => {
@@ -135,12 +120,12 @@ class Sdk {
         const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
         iframe.src = `${this.getSigninUrl()}&silentSignin=1`;
-      
+
         const handleMessage = (event: MessageEvent) => {
             if (window !== window.parent) {
                 return null;
             }
-          
+
             const message = event.data;
             if (message.tag !== "Casdoor" || message.type !== "SilentSignin") {
                 return;
@@ -182,6 +167,57 @@ class Sdk {
         };
 
         window.addEventListener("message", handleMessage);
+    }
+
+    public async signin_redirect(): Promise<void> {
+        const redirectUri = `${window.location.origin}${this.config.redirectPath}`;
+        const scope = "read";
+        const state = getOrSaveState();
+        const codeVerifier = getOrSaveCodeVerifier();
+        const codeChallenge = await encodeCodeVerifier(codeVerifier);
+
+        const casdoorEndpoint = `${this.config.serverUrl.trim()}/login/oauth/authorize`;
+        const queryParams = new URLSearchParams({
+            client_id: this.config.clientId,
+            response_type: "code",
+            redirect_uri: redirectUri,
+            scope: scope,
+            state: state,
+            code_challenge: codeChallenge,
+            code_challenge_method: "S256"
+        });
+        window.location.href = `${casdoorEndpoint}?${queryParams.toString()}`;
+    }
+
+    public async exchangeCodeForToken(code: string): Promise<Response> {
+        const codeVerifier = getOrSaveCodeVerifier();
+
+        // build token endpoint
+        const tokenEndpoint = `${this.config.serverUrl.trim()}/login/oauth/access_token`;
+        // @ts-ignore
+        const requestBody = new URLSearchParams({
+            grant_type: 'authorization_code',
+            code: code,
+            client_id: this.config.clientId,
+            redirect_uri: `${window.location.origin}${this.config.redirectPath}`,
+            code_verifier: codeVerifier
+        });
+
+        return fetch(tokenEndpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: requestBody.toString()
+        });
+    }
+
+    public async getUserInfo(accessToken: string): Promise<Response> {
+        return fetch(`${this.config.serverUrl.trim()}/api/userinfo?accesstoken=${accessToken}`, {
+            method: "GET",
+            credentials: "include",
+            }
+        );
     }
 }
 
