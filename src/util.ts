@@ -1,4 +1,3 @@
-// generate random code_verifier
 function generateCodeVerifier(): string {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
     const length = Math.floor(Math.random() * (128 - 43 + 1)) + 43;
